@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBA & CHILL - Hệ Thống Đặt Nước Uống Tươi Ngon & Giao Nhanh</title>
+  <meta name="description" content="Đặt trà sữa, cà phê, trà trái cây, sinh tố tươi ngon giao tận nơi trong 30 phút. Nhiều ưu đãi hấp dẫn mỗi ngày!">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome / SVG Icons support -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Application Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- TOP ANNOUNCEMENT BAR -->
+    <div class="announcement-bar">
+      <span>🎉 Nhập mã <strong>XINCHAO10</strong> giảm ngay 10% cho đơn hàng đầu tiên! | 🚀 Giao hàng siêu tốc trong 30 phút</span>
+    </div>
+
+    <!-- MAIN HEADER -->
+    <header class="main-header">
+      <div class="header-inner container">
+        <a href="#" class="brand-logo">
+          <div class="logo-icon"><i class="fa-solid fa-glass-water-droplet"></i></div>
+          <div class="logo-text">
+            <span class="brand-name">BOBA<span class="accent-text">&</span>CHILL</span>
+            <span class="brand-tagline">Beverage & Dessert Bar</span>
+          </div>
+        </a>
+
+        <!-- SEARCH BAR -->
+        <div class="search-wrapper">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="searchInput" placeholder="Tìm trà sữa, cà phê, dâu tây, matcha..." autocomplete="off">
+          <button id="clearSearchBtn" class="clear-search-btn hidden"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- HEADER ACTIONS -->
+        <div class="header-actions">
+          <button id="trackOrderBtn" class="btn-secondary btn-icon-text">
+            <i class="fa-solid fa-receipt"></i>
+            <span>Đơn hàng</span>
+            <span id="activeOrdersBadge" class="badge-dot hidden"></span>
+          </button>
+
+          <button id="cartToggleBtn" class="btn-primary cart-btn">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span>Giỏ hàng</span>
+            <span id="cartBadgeCounter" class="cart-badge">0</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- HERO BANNER -->
+    <section class="hero-section">
+      <div class="container hero-content">
+        <div class="hero-text-col">
+          <span class="hero-pill"><i class="fa-solid fa-fire"></i> Best Seller Hè 2026</span>
+          <h1 class="hero-title">Thưởng Thức Nước Uống <span class="gradient-text">Đậm Vị & Tươi Mới</span> Mỗi Ngày</h1>
+          <p class="hero-description">Nguyên liệu nhập khẩu tươi sạch 100%, pha chế thủ công theo công thức độc quyền. Tùy chỉnh mức đường, đá & topping theo gu cá nhân!</p>
+          
+          <div class="hero-features">
+            <div class="feature-tag"><i class="fa-solid fa-truck-fast"></i> Giao nhanh 30p</div>
+            <div class="feature-tag"><i class="fa-solid fa-leaf"></i> 100% Trái cây tươi</div>
+            <div class="feature-tag"><i class="fa-solid fa-shield-heart"></i> Đảm bảo an toàn</div>
+          </div>
+        </div>
+
+        <div class="hero-visual-col">
+          <div class="hero-glass-card">
+            <div class="hero-drink-preview" id="heroDrinkPreview">
+              <span class="hero-card-badge">HOT DEAL 🔥</span>
+              <img src="assets/images/hero_bubble_tea.jpg" alt="Trà sữa trân châu hoàng gia" id="heroImg">
+              <div class="hero-card-info">
+                <h3>Trà Sữa Trân Châu Hoàng Gia</h3>
+                <div class="hero-card-price">
+                  <span class="current-price">45.000đ</span>
+                  <span class="old-price">55.000đ</span>
+                </div>
+                <button class="btn-quick-add" id="heroOrderBtn">
+                  <i class="fa-solid fa-plus"></i> Đặt Ngay
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-body container">
+      <!-- CATEGORY NAV TABS -->
+      <section class="category-section">
+        <div class="section-header">
+          <h2 class="section-title">Danh Mục Nước Uống</h2>
+          <span class="section-subtitle">Khám phá các dòng đồ uống thơm ngon chuẩn vị</span>
+        </div>
+        <div class="category-tabs-wrapper">
+          <ul class="category-tabs" id="categoryNav">
+            <!-- Rendered by JS -->
+          </ul>
+        </div>
+      </section>
+
+      <!-- FILTER & SORT TOOLBAR -->
+      <div class="toolbar-section">
+        <div class="results-count" id="resultsCount">Hiển thị 8 món uống</div>
+        <div class="toolbar-filters">
+          <label for="sortSelect"><i class="fa-solid fa-arrow-down-short-wide"></i> Sắp xếp:</label>
+          <select id="sortSelect" class="custom-select">
+            <option value="featured">Nổi bật nhất</option>
+            <option value="price-asc">Giá: Thấp đến Cao</option>
+            <option value="price-desc">Giá: Cao đến Thấp</option>
+            <option value="name-asc">Tên A-Z</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- MENU PRODUCT GRID -->
+      <section class="menu-grid-section">
+        <div id="menuGrid" class="menu-grid">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div id="emptyMenuState" class="empty-state hidden">
+          <div class="empty-icon"><i class="fa-solid fa-mug-hot"></i></div>
+          <h3>Không tìm thấy món uống nào phù hợp!</h3>
+          <p>Thử tìm kiếm với từ khóa khác hoặc chuyển sang danh mục khác xem sao nhé.</p>
+          <button id="resetFiltersBtn" class="btn-secondary">Xem tất cả món</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="main-footer">
+      <div class="container footer-content">
+        <div class="footer-col brand-col">
+          <div class="brand-logo">
+            <div class="logo-icon"><i class="fa-solid fa-glass-water-droplet"></i></div>
+            <span class="brand-name">BOBA<span class="accent-text">&</span>CHILL</span>
+          </div>
+          <p>Hệ thống chuỗi cửa hàng pha chế trà sữa, cà phê và trà trái cây cao cấp hàng đầu Việt Nam.</p>
+          <div class="social-links">
+            <a href="#"><i class="fa-brands fa-facebook"></i></a>
+            <a href="#"><i class="fa-brands fa-instagram"></i></a>
+            <a href="#"><i class="fa-brands fa-tiktok"></i></a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>Thời Gian Mở Cửa</h4>
+          <p><i class="fa-regular fa-clock"></i> Thứ 2 - Chủ Nhật: 07:30 - 22:30</p>
+          <p><i class="fa-solid fa-phone"></i> Hotline Đặt Hàng: 1900 888 999</p>
+          <p><i class="fa-solid fa-location-dot"></i> 123 Đường Nguyễn Huệ, Quận 1, TP.HCM</p>
+        </div>
+        <div class="footer-col">
+          <h4>Cam Kết Chất Lượng</h4>
+          <ul>
+            <li><i class="fa-solid fa-check"></i> Trà pha tươi mới mỗi 4 tiếng</li>
+            <li><i class="fa-solid fa-check"></i> Trân châu dẻo thơm nấu mới liên tục</li>
+            <li><i class="fa-solid fa-check"></i> Đổi trả 100% nếu không hài lòng</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 BOBA & CHILL Beverage System. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- CART DRAWER BACKDROP & CONTAINER -->
+    <div id="cartBackdrop" class="drawer-backdrop hidden"></div>
+    <aside id="cartDrawer" class="cart-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title">
+          <i class="fa-solid fa-basket-shopping"></i>
+          <h3>Giỏ Hàng Của Bạn</h3>
+          <span id="cartItemCountBadge" class="pill-badge">0 món</span>
+        </div>
+        <button id="closeCartBtn" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="drawer-body" id="cartBody">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="drawer-footer" id="cartFooter">
+        <div class="promo-box">
+          <div class="input-group">
+            <input type="text" id="voucherInput" placeholder="Nhập mã ưu đãi (ví dụ: XINCHAO10)">
+            <button id="applyVoucherBtn" class="btn-apply">Áp dụng</button>
+          </div>
+          <div id="voucherMessage" class="voucher-msg hidden"></div>
+        </div>
+
+        <div class="cart-summary">
+          <div class="summary-row">
+            <span>Tạm tính:</span>
+            <span id="cartSubtotal">0đ</span>
+          </div>
+          <div class="summary-row" id="discountRow" style="display: none;">
+            <span>Giảm giá:</span>
+            <span id="cartDiscount" class="text-success">-0đ</span>
+          </div>
+          <div class="summary-row">
+            <span>Phí giao hàng:</span>
+            <span id="cartShipping">15.000đ</span>
+          </div>
+          <div class="summary-row total-row">
+            <span>Tổng thanh toán:</span>
+            <span id="cartTotal" class="total-price">0đ</span>
+          </div>
+        </div>
+
+        <button id="proceedCheckoutBtn" class="btn-primary btn-block btn-lg" disabled>
+          <span>Tiến Hành Đặt Hàng</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- DRINK CUSTOMIZE MODAL -->
+    <div id="drinkModalBackdrop" class="modal-backdrop hidden">
+      <div class="modal-card drink-customize-modal">
+        <button id="closeDrinkModalBtn" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+        <div class="modal-body-split">
+          <div class="modal-img-col">
+            <img id="modalDrinkImg" src="" alt="Drink Detail">
+            <span id="modalDrinkCategory" class="category-badge">Trà sữa</span>
+          </div>
+          <div class="modal-info-col">
+            <h2 id="modalDrinkName" class="modal-drink-title">Tên Món Uống</h2>
+            <p id="modalDrinkDesc" class="modal-drink-desc">Mô tả sản phẩm...</p>
+            <div class="modal-drink-base-price" id="modalDrinkBasePrice">45.000đ</div>
+
+            <form id="customizeForm" class="customize-form" onsubmit="return false;">
+              <!-- SIZE SELECTION -->
+              <div class="option-group">
+                <label class="option-title"><i class="fa-solid fa-expand"></i> Chọn Kích Thước (Size)</label>
+                <div class="options-grid" id="sizeOptionsGrid">
+                  <!-- Rendered by JS -->
+                </div>
+              </div>
+
+              <!-- ICE LEVEL -->
+              <div class="option-group">
+                <label class="option-title"><i class="fa-solid fa-snowflake"></i> Mức Đá</label>
+                <div class="options-grid" id="iceOptionsGrid">
+                  <!-- Rendered by JS -->
+                </div>
+              </div>
+
+              <!-- SWEETNESS LEVEL -->
+              <div class="option-group">
+                <label class="option-title"><i class="fa-solid fa-cubes-stacked"></i> Mức Đường</label>
+                <div class="options-grid" id="sweetOptionsGrid">
+                  <!-- Rendered by JS -->
+                </div>
+              </div>
+
+              <!-- TOPPINGS -->
+              <div class="option-group">
+                <label class="option-title"><i class="fa-solid fa-layer-group"></i> Thêm Topping Thơm Ngon</label>
+                <div class="toppings-list" id="toppingsList">
+                  <!-- Rendered by JS -->
+                </div>
+              </div>
+
+              <!-- NOTES -->
+              <div class="option-group">
+                <label for="modalItemNotes" class="option-title"><i class="fa-regular fa-note-sticky"></i> Ghi Chú Riêng Phù Hợp Gu Uống</label>
+                <input type="text" id="modalItemNotes" class="custom-input" placeholder="Ví dụ: Ít ngọt hơn nữa, giao liền dùm em...">
+              </div>
+            </form>
+
+            <div class="modal-action-footer">
+              <div class="quantity-selector">
+                <button id="decreaseQtyBtn" class="qty-btn"><i class="fa-solid fa-minus"></i></button>
+                <span id="modalQtyVal" class="qty-val">1</span>
+                <button id="increaseQtyBtn" class="qty-btn"><i class="fa-solid fa-plus"></i></button>
+              </div>
+
+              <button id="addToCartBtn" class="btn-primary btn-add-cart">
+                <span>Thêm Vào Giỏ - <strong id="modalTotalPrice">45.000đ</strong></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHECKOUT MODAL -->
+    <div id="checkoutModalBackdrop" class="modal-backdrop hidden">
+      <div class="modal-card checkout-modal">
+        <div class="modal-header">
+          <div class="modal-header-title">
+            <i class="fa-solid fa-truck-ramp-box"></i>
+            <h3>Xác Nhận Đặt Hàng & Thanh Toán</h3>
+          </div>
+          <button id="closeCheckoutBtn" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="checkout-body">
+          <form id="checkoutForm" class="checkout-form">
+            <div class="form-section">
+              <h4><i class="fa-solid fa-user"></i> Thông Tin Người Nhận</h4>
+              <div class="form-row two-cols">
+                <div class="form-group">
+                  <label for="custName">Họ và Tên *</label>
+                  <input type="text" id="custName" required placeholder="Nguyễn Văn A">
+                </div>
+                <div class="form-group">
+                  <label for="custPhone">Số Điện Thoại *</label>
+                  <input type="tel" id="custPhone" required placeholder="0901 234 567" pattern="[0-9]{10,11}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="custAddress">Địa Chỉ Giao Hàng *</label>
+                <input type="text" id="custAddress" required placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện">
+              </div>
+              <div class="form-group">
+                <label for="orderNotes">Ghi Chú Giao Hàng (Tùy chọn)</label>
+                <input type="text" id="orderNotes" placeholder="Ví dụ: Đứng chờ trước cổng công ty...">
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h4><i class="fa-solid fa-credit-card"></i> Phương Thức Thanh Toán</h4>
+              <div class="payment-methods">
+                <label class="payment-card active">
+                  <input type="radio" name="paymentMethod" value="COD" checked>
+                  <div class="payment-content">
+                    <div class="payment-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                    <div class="payment-details">
+                      <strong>Thanh Toán Khi Nhận Hàng (COD)</strong>
+                      <span>Trả tiền mặt trực tiếp cho tài xế giao hàng</span>
+                    </div>
+                  </div>
+                </label>
+
+                <label class="payment-card">
+                  <input type="radio" name="paymentMethod" value="VIETQR">
+                  <div class="payment-content">
+                    <div class="payment-icon"><i class="fa-solid fa-qrcode"></i></div>
+                    <div class="payment-details">
+                      <strong>Chuyển Khoản Ngân Hàng (VietQR)</strong>
+                      <span>Mã QR chuyển khoản tự động không cần nhập thông tin</span>
+                    </div>
+                  </div>
+                </label>
+
+                <label class="payment-card">
+                  <input type="radio" name="paymentMethod" value="MOMO">
+                  <div class="payment-content">
+                    <div class="payment-icon"><i class="fa-solid fa-wallet"></i></div>
+                    <div class="payment-details">
+                      <strong>Ví Điện Tử MoMo / ZaloPay</strong>
+                      <span>Thanh toán siêu tốc qua ứng dụng ví điện tử</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <!-- VIETQR DISPLAY BOX -->
+              <div id="vietqrBox" class="vietqr-box hidden">
+                <div class="qr-notice">Quét mã QR bằng ứng dụng ngân hàng hoặc MoMo để thanh toán:</div>
+                <div class="qr-image-wrapper">
+                  <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=BOBACHILL_ORDER" alt="VietQR Code">
+                </div>
+                <div class="qr-meta">
+                  <p>Chủ TK: <strong>BOBA & CHILL BEVERAGE CO.</strong></p>
+                  <p>Số TK: <strong>9999 8888 6666</strong> (MB Bank)</p>
+                  <p>Nội dung CK: <strong id="qrRefNote">BOBACHILL ORDER</strong></p>
+                </div>
+              </div>
+            </div>
+
+            <button id="submitOrderBtn" type="submit" class="btn-primary btn-block btn-lg">
+              <i class="fa-solid fa-check-circle"></i> Xác Nhận Đặt Đơn Hàng
+            </button>
+          </form>
+
+          <!-- ORDER SUMMARY SIDEBAR IN CHECKOUT -->
+          <div class="checkout-summary-box">
+            <h4>Tóm Tắt Đơn Hàng</h4>
+            <div id="checkoutItemsList" class="checkout-items-list">
+              <!-- Rendered by JS -->
+            </div>
+            <div class="checkout-totals">
+              <div class="total-row-item">
+                <span>Số lượng món:</span>
+                <span id="checkoutTotalCount">0 món</span>
+              </div>
+              <div class="total-row-item">
+                <span>Phí giao hàng:</span>
+                <span>15.000đ</span>
+              </div>
+              <div class="total-row-item highlight">
+                <span>Tổng cộng:</span>
+                <strong id="checkoutFinalTotal">0đ</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDER TRACKER MODAL -->
+    <div id="orderTrackerModalBackdrop" class="modal-backdrop hidden">
+      <div class="modal-card tracker-modal">
+        <div class="modal-header">
+          <div class="modal-header-title">
+            <i class="fa-solid fa-map-location-dot"></i>
+            <h3>Theo Dõi Đơn Hàng Của Bạn</h3>
+          </div>
+          <button id="closeTrackerBtn" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="tracker-body" id="trackerBody">
+          <!-- Rendered dynamically by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+  </div>
+
+  <!-- JavaScript Application Entry Points -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
