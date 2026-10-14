@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "name": "Local Demo Server",
+    "host": "127.0.0.1",
+    "port": 2222,
+    "user": "demo"
+  },
+  {
+    "name": "kali-linux",
+    "host": "192.168.100.2",
+    "port": 22,
+    "user": "kali"
+  }
+]
