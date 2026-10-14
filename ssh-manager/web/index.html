@@ -1,16 +1,155 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SSH Manager</title>
+  <title>SSH Manager - Quản Lý & Thực Thi Lệnh SSH</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main>
-    <h1>SSH Manager</h1>
-    <p>Web interface coming soon.</p>
+  <header class="app-header">
+    <div class="header-content">
+      <div class="logo">
+        <span class="icon">⚡</span>
+        <h1>SSH Manager</h1>
+      </div>
+      <div class="badge-online">
+        <span class="dot"></span> Backend Active (:8080)
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <!-- CỘT 1: Quản lý danh sách Server -->
+      <section class="card server-section">
+        <div class="card-header">
+          <h2>Danh Sách Server</h2>
+          <button id="btn-show-add" class="btn btn-primary btn-sm">+ Thêm Server</button>
+        </div>
+
+        <!-- Form thêm server (ẩn mặc định, toggle khi bấm nút) -->
+        <div id="add-server-form" class="form-container hidden">
+          <h3>Thêm Server Mới</h3>
+          <div class="form-group">
+            <label for="server-name">Tên hiển thị:</label>
+            <input type="text" id="server-name" placeholder="VD: Server Test Ubuntu">
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="server-host">Host / IP: *</label>
+              <input type="text" id="server-host" placeholder="127.0.0.1" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="server-port">Port: *</label>
+              <input type="number" id="server-port" value="22" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="server-user">Tên đăng nhập mặc định:</label>
+            <input type="text" id="server-user" placeholder="root / demo">
+          </div>
+          <div class="form-actions">
+            <button id="btn-save-server" class="btn btn-success btn-sm">Lưu</button>
+            <button id="btn-cancel-add" class="btn btn-secondary btn-sm">Huỷ</button>
+          </div>
+        </div>
+
+        <!-- Danh sách Server cards -->
+        <div id="server-list" class="server-list">
+          <p class="empty-state">Đang tải danh sách server...</p>
+        </div>
+      </section>
+
+      <!-- CỘT 2: Thực thi lệnh SSH -->
+      <section class="card exec-section">
+        <div class="card-header">
+          <h2>Thực Thi Lệnh SSH</h2>
+        </div>
+
+        <form id="exec-form" class="exec-form">
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="exec-host">Host / IP: *</label>
+              <input type="text" id="exec-host" placeholder="127.0.0.1" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="exec-port">Port: *</label>
+              <input type="number" id="exec-port" value="22" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="exec-user">Tài khoản (User): *</label>
+              <input type="text" id="exec-user" placeholder="root / demo" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="exec-pass">Mật khẩu: *</label>
+              <input type="password" id="exec-pass" placeholder="Mật khẩu SSH" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="exec-command">Lệnh thực thi: *</label>
+            <div class="input-with-button">
+              <input type="text" id="exec-command" placeholder="VD: date, uname -a, whoami, ls -la" required>
+              <button type="submit" id="btn-exec" class="btn btn-primary">Chạy Lệnh 🚀</button>
+            </div>
+          </div>
+
+          <div class="quick-commands">
+            <span>Gợi ý lệnh nhanh:</span>
+            <button type="button" class="btn-chip" data-cmd="date">date</button>
+            <button type="button" class="btn-chip" data-cmd="hostname">hostname</button>
+            <button type="button" class="btn-chip" data-cmd="whoami">whoami</button>
+            <button type="button" class="btn-chip" data-cmd="uname -a">uname -a</button>
+            <button type="button" class="btn-chip" data-cmd="echo 'SSH Manager OK!'">echo</button>
+          </div>
+        </form>
+
+        <!-- Terminal Output -->
+        <div class="terminal-wrapper">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </div>
+            <span class="terminal-title">Terminal Console Output</span>
+            <button id="btn-clear-term" class="btn-chip btn-chip-sm">Xóa màn hình</button>
+          </div>
+          <pre id="terminal-output" class="terminal-body">$ Chờ lệnh thực thi từ giao diện...</pre>
+        </div>
+      </section>
+    </div>
+
+    <!-- HÀNG DƯỚI: Lịch sử thực thi -->
+    <section class="card history-section">
+      <div class="card-header">
+        <h2>Lịch Sử Thực Thi</h2>
+        <button id="btn-refresh-history" class="btn btn-secondary btn-sm">Làm mới</button>
+      </div>
+      <div class="table-responsive">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Mục tiêu (Server)</th>
+              <th>Lệnh</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <tr>
+              <td colspan="4" class="text-center text-muted">Chưa có lệnh nào được chạy trong phiên này.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
+
   <script src="app.js"></script>
 </body>
 </html>

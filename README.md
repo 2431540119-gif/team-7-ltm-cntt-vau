@@ -6,8 +6,15 @@ Các bài thực hành và demo của nhóm trong môn Lập trình mạng.
 
 | Thư mục | Mô tả | Hướng dẫn |
 | --- | --- | --- |
-| [`ssh-app/`](./ssh-app/) | Demo SSH server/client viết bằng Go, minh họa kết nối từ xa và xác minh host key. | [Cách cài đặt, chạy và kiểm thử](./ssh-app/README.md) |
+| [`ssh-manager/`](./ssh-manager/) | Ứng dụng quản lý kết nối và thực thi lệnh SSH qua giao diện Web và Go backend. | [Hướng dẫn](./ssh-manager/README.md) \| [Giao diện Web](./ssh-manager/web/README.md) |
 
 ## Bắt đầu
 
-Để chạy demo SSH, cài Go 1.23 trở lên rồi làm theo hướng dẫn trong [README của `ssh-app`](./ssh-app/README.md). README này là trang tổng quan của repository; hướng dẫn chi tiết và luồng hoạt động được đặt cạnh mã nguồn của từng ứng dụng.
+Để chạy ứng dụng SSH Manager, cài Go 1.22 trở lên rồi di chuyển vào thư mục `ssh-manager`:
+
+```bash
+cd ssh-manager
+go run ./cmd
+```
+
+Xem chi tiết hướng dẫn giao diện tại [`ssh-manager/web/README.md`](./ssh-manager/web/README.md).
