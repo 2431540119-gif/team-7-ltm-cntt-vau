@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	historyStore = history.NewStore()
-	dataPath     = "data/servers.json"
-	webDir       = "web"
+	historyStore    = history.NewStore()
+	dataPath        = "data/servers.json"
+	credentialsPath = "data/credentials.json"
+	webDir          = "web"
 )
 
 func resolvePaths() {
@@ -25,6 +26,7 @@ func resolvePaths() {
 	if _, err := os.Stat("data"); os.IsNotExist(err) {
 		if _, err := os.Stat("ssh-manager/data"); err == nil {
 			dataPath = "ssh-manager/data/servers.json"
+			credentialsPath = "ssh-manager/data/credentials.json"
 			webDir = "ssh-manager/web"
 		}
 	}
@@ -50,6 +52,14 @@ func handleGetServers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Không thể đọc danh sách server: %v", err), http.StatusInternalServerError)
 		return
 	}
+	credentials, err := server.LoadCredentials(credentialsPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Không thể đọc mật khẩu server: %v", err), http.StatusInternalServerError)
+		return
+	}
+	for i := range servers {
+		servers[i].Password = credentials[servers[i].Name]
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(servers)
 }
@@ -71,11 +81,30 @@ func handleAddServer(w http.ResponseWriter, r *http.Request) {
 		newServer.Name = fmt.Sprintf("%s:%d", newServer.Host, newServer.Port)
 	}
 
-	servers, _ := server.Load(dataPath)
+	servers, err := server.Load(dataPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Không thể đọc danh sách server: %v", err), http.StatusInternalServerError)
+		return
+	}
 	servers = append(servers, newServer)
 	if err := server.Save(dataPath, servers); err != nil {
 		http.Error(w, fmt.Sprintf("Không thể lưu server: %v", err), http.StatusInternalServerError)
 		return
+	}
+	credentials, err := server.LoadCredentials(credentialsPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Không thể đọc mật khẩu server: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if newServer.Password != "" {
+		credentials[newServer.Name] = newServer.Password
+	}
+	if err := server.SaveCredentials(credentialsPath, credentials); err != nil {
+		http.Error(w, fmt.Sprintf("Không thể lưu mật khẩu server: %v", err), http.StatusInternalServerError)
+		return
+	}
+	for i := range servers {
+		servers[i].Password = credentials[servers[i].Name]
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -106,39 +135,100 @@ func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Lỗi lưu file", http.StatusInternalServerError)
 		return
 	}
+	credentials, err := server.LoadCredentials(credentialsPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Không thể đọc mật khẩu server: %v", err), http.StatusInternalServerError)
+		return
+	}
+	delete(credentials, name)
+	if err := server.SaveCredentials(credentialsPath, credentials); err != nil {
+		http.Error(w, fmt.Sprintf("Không thể cập nhật mật khẩu server: %v", err), http.StatusInternalServerError)
+		return
+	}
+	for i := range filtered {
+		filtered[i].Password = credentials[filtered[i].Name]
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(filtered)
 }
 
+func writeExecuteError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(ExecuteResponse{Success: false, Error: message})
+}
+
 func handleExecute(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeExecuteError(w, http.StatusMethodNotAllowed, "Phương thức không được hỗ trợ")
 		return
 	}
 
 	var req ExecuteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Dữ liệu JSON không hợp lệ", http.StatusBadRequest)
+		writeExecuteError(w, http.StatusBadRequest, fmt.Sprintf("Dữ liệu JSON không hợp lệ: %v", err))
+		return
+	}
+	if strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.User) == "" || strings.TrimSpace(req.Command) == "" {
+		writeExecuteError(w, http.StatusBadRequest, "Cần nhập Host, User và Lệnh thực thi")
+		return
+	}
+	if req.Password == "" {
+		writeExecuteError(w, http.StatusBadRequest, "Chưa nhập mật khẩu SSH")
 		return
 	}
 
 	output, err := ssh.Execute(req.Host, req.Port, req.User, req.Password, req.Command)
+	if err != nil {
+		target := fmt.Sprintf("%s@%s:%d", req.User, req.Host, req.Port)
+		historyStore.Add(target, req.Command, err.Error(), false)
+		writeExecuteError(w, http.StatusBadGateway, err.Error())
+		return
+	}
 	res := ExecuteResponse{
-		Success: err == nil,
+		Success: true,
 		Output:  output,
 	}
 
 	target := fmt.Sprintf("%s@%s:%d", req.User, req.Host, req.Port)
-	if err != nil {
-		res.Error = err.Error()
-		historyStore.Add(target, req.Command, err.Error(), false)
-	} else {
-		historyStore.Add(target, req.Command, output, true)
-	}
+	historyStore.Add(target, req.Command, output, true)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
+}
+
+func handleTestConnection(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeExecuteError(w, http.StatusMethodNotAllowed, "Phương thức không được hỗ trợ")
+		return
+	}
+
+	var req ExecuteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeExecuteError(w, http.StatusBadRequest, fmt.Sprintf("Dữ liệu JSON không hợp lệ: %v", err))
+		return
+	}
+	if strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.User) == "" {
+		writeExecuteError(w, http.StatusBadRequest, "Cần nhập Host và User")
+		return
+	}
+	if req.Password == "" {
+		writeExecuteError(w, http.StatusBadRequest, "Server chưa có mật khẩu đã lưu. Hãy chọn server, nhập mật khẩu rồi chạy lệnh.")
+		return
+	}
+
+	output, err := ssh.Execute(req.Host, req.Port, req.User, req.Password, "whoami")
+	if err != nil {
+		writeExecuteError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ExecuteResponse{
+		Success: true,
+		Output:  strings.TrimSpace(output),
+	})
 }
 
 func handleHistory(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +243,9 @@ func main() {
 	dir := filepath.Dir(dataPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		log.Printf("Cảnh báo tạo thư mục data: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(credentialsPath), 0755); err != nil {
+		log.Printf("Cảnh báo tạo thư mục lưu mật khẩu: %v", err)
 	}
 
 	// API Routes
@@ -170,6 +263,7 @@ func main() {
 	})
 
 	http.HandleFunc("/api/execute", handleExecute)
+	http.HandleFunc("/api/test-connection", handleTestConnection)
 	http.HandleFunc("/api/history", handleHistory)
 
 	// Static Web UI File Server

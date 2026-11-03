@@ -60,3 +60,10 @@ Mở trình duyệt web bất kỳ (Chrome, Edge, Firefox...) và truy cập và
 
 3. **Lịch sử thực thi (`/api/history`)**:
    - Ghi lại thời gian, server mục tiêu, câu lệnh và trạng thái (Thành công / Thất bại) của các lệnh đã chạy trong phiên.
+
+### Mật khẩu server
+
+- Khi thêm server, có thể lưu mật khẩu SSH để nút **Chọn** tự điền thông tin đăng nhập.
+- Mật khẩu được lưu riêng trong `data/credentials.json`, không nằm trong danh sách server và đã được thêm vào `.gitignore`.
+- Tệp mật khẩu là văn bản thuần; chỉ dùng trên máy đáng tin cậy và không chia sẻ tệp này.
+- Khi lệnh SSH thất bại, Terminal Console hiển thị thông báo lỗi cụ thể do backend trả về, kèm mã HTTP.

@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -17,7 +18,7 @@ func Execute(host string, port int, user, password, cmd string) (string, error) 
 	if port <= 0 {
 		port = 22
 	}
-	addr := fmt.Sprintf("%s:%d", host, port)
+	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	config := &ssh.ClientConfig{
 		User: user,

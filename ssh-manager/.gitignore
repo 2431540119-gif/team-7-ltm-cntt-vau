@@ -1,3 +1,4 @@
 *.exe
 *.log
 .env
+/data/credentials.json

@@ -61,7 +61,8 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${escapeHtml(srv.user ? srv.user + "@" : "")}${escapeHtml(srv.host)}:${srv.port}</p>
         </div>
         <div class="server-actions">
-          <button class="btn btn-primary btn-sm btn-select-srv">Chọn</button>
+          <button class="btn btn-primary btn-sm btn-select-srv">Nạp thông tin</button>
+          <button class="btn btn-secondary btn-sm btn-test-srv">Kiểm tra SSH</button>
           <button class="btn btn-danger btn-sm btn-delete-srv">Xóa</button>
         </div>
       `;
@@ -69,9 +70,62 @@ document.addEventListener("DOMContentLoaded", () => {
       item.querySelector(".btn-select-srv").addEventListener("click", () => {
         execHost.value = srv.host;
         execPort.value = srv.port;
-        if (srv.user) execUser.value = srv.user;
+        execUser.value = srv.user || "";
+        execPass.value = srv.password || "";
         execPass.focus();
         appendTerminal(`> Đã chọn server [${srv.name}] (${srv.host}:${srv.port})\n`);
+      });
+
+      item.querySelector(".btn-test-srv").addEventListener("click", async (event) => {
+        const password = srv.password ||
+          (execHost.value === srv.host &&
+            String(execPort.value) === String(srv.port) &&
+            execUser.value === (srv.user || "")
+            ? execPass.value
+            : "");
+        if (!password) {
+          execHost.value = srv.host;
+          execPort.value = srv.port;
+          execUser.value = srv.user || "";
+          execPass.focus();
+          appendTerminal(`❌ Chưa có mật khẩu cho [${srv.name}]. Đã nạp thông tin; nhập mật khẩu rồi bấm Kiểm tra SSH lần nữa.\n`);
+          return;
+        }
+
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = "Đang kiểm tra...";
+        appendTerminal(`\n> Kiểm tra SSH [${srv.name}] (${srv.host}:${srv.port})...\n`);
+        try {
+          const res = await fetch("/api/test-connection", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              host: srv.host,
+              port: srv.port,
+              user: srv.user,
+              password,
+            }),
+          });
+          const body = await res.text();
+          let data;
+          try {
+            data = JSON.parse(body);
+          } catch (err) {
+            throw new Error(body || `Backend trả về phản hồi không hợp lệ (HTTP ${res.status})`);
+          }
+
+          if (res.ok && data.success) {
+            appendTerminal(`✅ Kết nối SSH thành công. Đăng nhập thành công với user: ${data.output}\n`);
+          } else {
+            appendTerminal(`❌ Không kết nối được (HTTP ${res.status}):\n${data.error || `Backend trả về lỗi HTTP ${res.status}`}\n`);
+          }
+        } catch (err) {
+          appendTerminal(`❌ LỖI GỌI API: ${err.message}\n`);
+        } finally {
+          button.disabled = false;
+          button.textContent = "Kiểm tra SSH";
+        }
       });
 
       item.querySelector(".btn-delete-srv").addEventListener("click", async () => {
@@ -97,32 +151,49 @@ document.addEventListener("DOMContentLoaded", () => {
     const host = document.getElementById("server-host").value.trim();
     const port = parseInt(document.getElementById("server-port").value, 10) || 22;
     const user = document.getElementById("server-user").value.trim();
+    const password = document.getElementById("server-password").value;
 
     if (!host) {
       alert("Vui lòng nhập Host / IP!");
       return;
     }
 
-    await saveServer(name || `${host}:${port}`, host, port, user);
-    document.getElementById("server-name").value = "";
-    document.getElementById("server-host").value = "";
-    document.getElementById("server-user").value = "";
-    addServerFormEl.classList.add("hidden");
+    const saved = await saveServer(name || `${host}:${port}`, host, port, user, password);
+    if (saved) {
+      document.getElementById("server-name").value = "";
+      document.getElementById("server-host").value = "";
+      document.getElementById("server-user").value = "";
+      document.getElementById("server-password").value = "";
+      addServerFormEl.classList.add("hidden");
+    }
   });
 
-  async function saveServer(name, host, port, user) {
+  async function saveServer(name, host, port, user, password = "") {
     try {
       const res = await fetch("/api/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, host, port, user }),
+        body: JSON.stringify({ name, host, port, user, password }),
       });
-      if (!res.ok) throw new Error("Lỗi khi lưu server");
+      if (!res.ok) throw new Error(await responseError(res, "Lỗi khi lưu server"));
       const updated = await res.json();
       renderServers(updated);
+      return true;
     } catch (err) {
       alert("Lỗi: " + err.message);
+      return false;
     }
+  }
+
+  async function responseError(res, fallback) {
+    const body = await res.text();
+    try {
+      const data = JSON.parse(body);
+      if (data.error) return data.error;
+    } catch (err) {
+      if (!body) return `${fallback} (HTTP ${res.status})`;
+    }
+    return body || `${fallback} (HTTP ${res.status})`;
   }
 
   async function deleteServer(name) {
@@ -130,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch(`/api/servers?name=${encodeURIComponent(name)}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Lỗi khi xóa server");
+      if (!res.ok) throw new Error(await responseError(res, "Lỗi khi xóa server"));
       const updated = await res.json();
       renderServers(updated);
     } catch (err) {
@@ -149,7 +220,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const command = execCommand.value.trim();
 
     if (!host || !user || !command) {
-      alert("Vui lòng điền đủ Host, User và Lệnh thực thi!");
+      appendTerminal("❌ LỖI: Vui lòng nhập Host, User và Lệnh thực thi.\n");
+      return;
+    }
+    if (!password) {
+      appendTerminal("❌ LỖI: Chưa nhập mật khẩu SSH. Hãy nhập mật khẩu hoặc thêm mật khẩu khi lưu server.\n");
       return;
     }
 
@@ -164,12 +239,18 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ host, port, user, password, command }),
       });
 
-      const data = await res.json();
+      const body = await res.text();
+      let data;
+      try {
+        data = JSON.parse(body);
+      } catch (err) {
+        throw new Error(body || `Backend trả về phản hồi không hợp lệ (HTTP ${res.status})`);
+      }
 
-      if (data.success) {
+      if (res.ok && data.success) {
         appendTerminal(data.output || "(Lệnh thực thi thành công không có output)\n");
       } else {
-        appendTerminal(`❌ LỖI:\n${data.error || "Không rõ nguyên nhân"}\n`);
+        appendTerminal(`❌ LỖI (HTTP ${res.status}):\n${data.error || `Backend trả về lỗi HTTP ${res.status}`}\n`);
       }
     } catch (err) {
       appendTerminal(`❌ LỖI GỌI API: ${err.message}\n`);

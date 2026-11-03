@@ -40,3 +40,12 @@ ssh-manager/
 
 3. Mở trình duyệt web và truy cập vào:
    👉 **http://localhost:8080**
+
+## 3. Kết nối tới SSH server
+
+- Các địa chỉ có sẵn trong danh sách chỉ là cấu hình mẫu; chúng không tự tạo hay khởi động SSH server.
+- Bấm **Kiểm tra SSH** trên một mục để kiểm tra đăng nhập. Kết quả sẽ nêu rõ lỗi kết nối, xác thực, hoặc thành công.
+- `127.0.0.1` và các địa chỉ `127.x.x.x` trỏ về chính máy đang chạy SSH Manager, không phải máy ảo Linux. Hãy thay bằng IP thật của máy đích.
+- Trên máy Linux đích, cần bật SSH server (ví dụ `sudo systemctl enable --now ssh`) và cho phép truy cập cổng SSH, thường là `22`.
+- Từ Windows, kiểm tra IP/cổng trước bằng `Test-NetConnection <IP-máy-Linux> -Port 22`. Nếu `TcpTestSucceeded` là `False`, hãy kiểm tra IP và chế độ mạng máy ảo (bridge hoặc NAT kèm port forwarding) trước khi chạy lệnh.
+- Chọn **Nạp thông tin** chỉ điền Host/Port/User/Mật khẩu; nó không tự kết nối. Có thể lưu mật khẩu khi thêm server để nút kiểm tra sử dụng.

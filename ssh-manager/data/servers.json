@@ -10,5 +10,17 @@
     "host": "192.168.100.2",
     "port": 22,
     "user": "kali"
+  },
+  {
+    "name": "abc",
+    "host": "127.00.03",
+    "port": 22,
+    "user": "ttt"
+  },
+  {
+    "name": "hhh",
+    "host": "127.0.0.5",
+    "port": 22,
+    "user": "ok"
   }
 ]
