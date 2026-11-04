@@ -48,4 +48,5 @@ ssh-manager/
 - `127.0.0.1` và các địa chỉ `127.x.x.x` trỏ về chính máy đang chạy SSH Manager, không phải máy ảo Linux. Hãy thay bằng IP thật của máy đích.
 - Trên máy Linux đích, cần bật SSH server (ví dụ `sudo systemctl enable --now ssh`) và cho phép truy cập cổng SSH, thường là `22`.
 - Từ Windows, kiểm tra IP/cổng trước bằng `Test-NetConnection <IP-máy-Linux> -Port 22`. Nếu `TcpTestSucceeded` là `False`, hãy kiểm tra IP và chế độ mạng máy ảo (bridge hoặc NAT kèm port forwarding) trước khi chạy lệnh.
-- Chọn **Nạp thông tin** chỉ điền Host/Port/User/Mật khẩu; nó không tự kết nối. Có thể lưu mật khẩu khi thêm server để nút kiểm tra sử dụng.
+- Chọn **Nạp thông tin** chỉ điền Host/Port/User; nó không tự kết nối. Mật khẩu đã lưu nằm ở backend và không được gửi về trình duyệt: khi chạy lệnh hoặc bấm **Kiểm tra SSH**, backend tự dùng mật khẩu đó.
+- Server chỉ nghe tại `127.0.0.1:8080` (web không có đăng nhập), nên chỉ truy cập được từ chính máy chạy ứng dụng. Mỗi lệnh SSH bị dừng chờ sau 30 giây.

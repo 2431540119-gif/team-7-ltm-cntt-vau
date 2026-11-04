@@ -21,6 +21,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const historyTbody = document.getElementById("history-tbody");
   const btnRefreshHistory = document.getElementById("btn-refresh-history");
 
+  // Saved server picked with "Nạp thông tin"; its password stays on the backend.
+  let selectedServerName = "";
+  [execHost, execPort, execUser].forEach((el) =>
+    el.addEventListener("input", () => {
+      selectedServerName = "";
+    })
+  );
+
   // Load Servers
   async function loadServers() {
     try {
@@ -38,14 +46,14 @@ document.addEventListener("DOMContentLoaded", () => {
       serverListEl.innerHTML = `
         <div class="empty-state">
           <p>Chưa có server nào được lưu.</p>
-          <button id="btn-quick-sample" class="btn btn-secondary btn-sm" style="margin-top:0.5rem">
-            + Thêm Server mẫu (localhost:2222)
+          <button id="btn-quick-sample" class="btn btn-secondary btn-sm" style="margin-top:0.75rem">
+            + Thêm Server mẫu (test.rebex.net)
           </button>
         </div>`;
       const btnQuickSample = document.getElementById("btn-quick-sample");
       if (btnQuickSample) {
         btnQuickSample.addEventListener("click", () => {
-          saveServer("Local Demo Server", "127.0.0.1", 2222, "demo");
+          saveServer("Rebex SSH Test Demo", "test.rebex.net", 22, "demo", "password");
         });
       }
       return;
@@ -58,10 +66,10 @@ document.addEventListener("DOMContentLoaded", () => {
       item.innerHTML = `
         <div class="server-info">
           <h4>${escapeHtml(srv.name)}</h4>
-          <p>${escapeHtml(srv.user ? srv.user + "@" : "")}${escapeHtml(srv.host)}:${srv.port}</p>
+          <p>${escapeHtml(srv.user ? srv.user + "@" : "")}${escapeHtml(srv.host)}:${srv.port}${srv.hasPassword ? '<span class="tag-saved-pass">🔒 Đã lưu pass</span>' : ""}</p>
         </div>
         <div class="server-actions">
-          <button class="btn btn-primary btn-sm btn-select-srv">Nạp thông tin</button>
+          <button class="btn btn-primary btn-sm btn-select-srv">Chọn</button>
           <button class="btn btn-secondary btn-sm btn-test-srv">Kiểm tra SSH</button>
           <button class="btn btn-danger btn-sm btn-delete-srv">Xóa</button>
         </div>
@@ -71,19 +79,32 @@ document.addEventListener("DOMContentLoaded", () => {
         execHost.value = srv.host;
         execPort.value = srv.port;
         execUser.value = srv.user || "";
-        execPass.value = srv.password || "";
-        execPass.focus();
-        appendTerminal(`> Đã chọn server [${srv.name}] (${srv.host}:${srv.port})\n`);
+        execPass.value = "";
+        selectedServerName = srv.hasPassword ? srv.name : "";
+        
+        const activeBadge = document.getElementById("active-server-badge");
+        const activeName = document.getElementById("active-server-name");
+        if (activeBadge && activeName) {
+          activeName.textContent = srv.name;
+          activeBadge.classList.remove("hidden");
+        }
+
+        if (!srv.hasPassword) {
+          execPass.focus();
+        } else {
+          execCommand.focus();
+        }
+        appendTerminal(`> Đã chọn server [${srv.name}] (${srv.host}:${srv.port})${srv.hasPassword ? " - Dùng pass bảo mật đã lưu" : ""}\n`);
       });
 
       item.querySelector(".btn-test-srv").addEventListener("click", async (event) => {
-        const password = srv.password ||
-          (execHost.value === srv.host &&
+        const password =
+          execHost.value === srv.host &&
             String(execPort.value) === String(srv.port) &&
             execUser.value === (srv.user || "")
             ? execPass.value
-            : "");
-        if (!password) {
+            : "";
+        if (!password && !srv.hasPassword) {
           execHost.value = srv.host;
           execPort.value = srv.port;
           execUser.value = srv.user || "";
@@ -100,12 +121,11 @@ document.addEventListener("DOMContentLoaded", () => {
           const res = await fetch("/api/test-connection", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              host: srv.host,
-              port: srv.port,
-              user: srv.user,
-              password,
-            }),
+            body: JSON.stringify(
+              password
+                ? { host: srv.host, port: srv.port, user: srv.user, password }
+                : { serverName: srv.name }
+            ),
           });
           const body = await res.text();
           let data;
@@ -223,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
       appendTerminal("❌ LỖI: Vui lòng nhập Host, User và Lệnh thực thi.\n");
       return;
     }
-    if (!password) {
+    if (!password && !selectedServerName) {
       appendTerminal("❌ LỖI: Chưa nhập mật khẩu SSH. Hãy nhập mật khẩu hoặc thêm mật khẩu khi lưu server.\n");
       return;
     }
@@ -236,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ host, port, user, password, command }),
+        body: JSON.stringify({ host, port, user, password, command, serverName: selectedServerName }),
       });
 
       const body = await res.text();

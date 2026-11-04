@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"ssh-manager/internal/history"
 	"ssh-manager/internal/server"
@@ -19,6 +20,9 @@ var (
 	dataPath        = "data/servers.json"
 	credentialsPath = "data/credentials.json"
 	webDir          = "web"
+
+	// mu serializes access to the JSON data files.
+	mu sync.Mutex
 )
 
 func resolvePaths() {
@@ -33,11 +37,12 @@ func resolvePaths() {
 }
 
 type ExecuteRequest struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Command  string `json:"command"`
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	User       string `json:"user"`
+	Password   string `json:"password"`
+	Command    string `json:"command"`
+	ServerName string `json:"serverName"`
 }
 
 type ExecuteResponse struct {
@@ -46,7 +51,54 @@ type ExecuteResponse struct {
 	Error   string `json:"error,omitempty"`
 }
 
+// serverView is a server as sent to the browser: it never carries the password.
+type serverView struct {
+	server.Server
+	HasPassword bool `json:"hasPassword"`
+}
+
+func serverViews(servers []server.Server, credentials map[string]string) []serverView {
+	views := make([]serverView, len(servers))
+	for i, s := range servers {
+		s.Password = ""
+		views[i] = serverView{Server: s, HasPassword: credentials[s.Name] != ""}
+	}
+	return views
+}
+
+// resolveTarget fills a request that names a saved server and has no password.
+// Host, port, user and password all come from the saved entry, so a saved
+// password can never be sent to a host the caller chose.
+func resolveTarget(req *ExecuteRequest) error {
+	if req.Password != "" || req.ServerName == "" {
+		return nil
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	servers, err := server.Load(dataPath)
+	if err != nil {
+		return fmt.Errorf("Không thể đọc danh sách server: %v", err)
+	}
+	credentials, err := server.LoadCredentials(credentialsPath)
+	if err != nil {
+		return fmt.Errorf("Không thể đọc mật khẩu server: %v", err)
+	}
+	for _, s := range servers {
+		if s.Name != req.ServerName {
+			continue
+		}
+		if credentials[s.Name] == "" {
+			return fmt.Errorf("Server %q chưa có mật khẩu đã lưu", s.Name)
+		}
+		req.Host, req.Port, req.User, req.Password = s.Host, s.Port, s.User, credentials[s.Name]
+		return nil
+	}
+	return fmt.Errorf("Không tìm thấy server %q", req.ServerName)
+}
+
 func handleGetServers(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	defer mu.Unlock()
 	servers, err := server.Load(dataPath)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Không thể đọc danh sách server: %v", err), http.StatusInternalServerError)
@@ -57,11 +109,8 @@ func handleGetServers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Không thể đọc mật khẩu server: %v", err), http.StatusInternalServerError)
 		return
 	}
-	for i := range servers {
-		servers[i].Password = credentials[servers[i].Name]
-	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(servers)
+	json.NewEncoder(w).Encode(serverViews(servers, credentials))
 }
 
 func handleAddServer(w http.ResponseWriter, r *http.Request) {
@@ -81,10 +130,18 @@ func handleAddServer(w http.ResponseWriter, r *http.Request) {
 		newServer.Name = fmt.Sprintf("%s:%d", newServer.Host, newServer.Port)
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
 	servers, err := server.Load(dataPath)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Không thể đọc danh sách server: %v", err), http.StatusInternalServerError)
 		return
+	}
+	for _, s := range servers {
+		if s.Name == newServer.Name {
+			http.Error(w, fmt.Sprintf("Tên server %q đã tồn tại", newServer.Name), http.StatusConflict)
+			return
+		}
 	}
 	servers = append(servers, newServer)
 	if err := server.Save(dataPath, servers); err != nil {
@@ -103,12 +160,8 @@ func handleAddServer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Không thể lưu mật khẩu server: %v", err), http.StatusInternalServerError)
 		return
 	}
-	for i := range servers {
-		servers[i].Password = credentials[servers[i].Name]
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(servers)
+	json.NewEncoder(w).Encode(serverViews(servers, credentials))
 }
 
 func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +171,8 @@ func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
 	servers, err := server.Load(dataPath)
 	if err != nil {
 		http.Error(w, "Lỗi đọc file", http.StatusInternalServerError)
@@ -145,12 +200,8 @@ func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Không thể cập nhật mật khẩu server: %v", err), http.StatusInternalServerError)
 		return
 	}
-	for i := range filtered {
-		filtered[i].Password = credentials[filtered[i].Name]
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(filtered)
+	json.NewEncoder(w).Encode(serverViews(filtered, credentials))
 }
 
 func writeExecuteError(w http.ResponseWriter, status int, message string) {
@@ -168,6 +219,10 @@ func handleExecute(w http.ResponseWriter, r *http.Request) {
 	var req ExecuteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeExecuteError(w, http.StatusBadRequest, fmt.Sprintf("Dữ liệu JSON không hợp lệ: %v", err))
+		return
+	}
+	if err := resolveTarget(&req); err != nil {
+		writeExecuteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.User) == "" || strings.TrimSpace(req.Command) == "" {
@@ -207,6 +262,10 @@ func handleTestConnection(w http.ResponseWriter, r *http.Request) {
 	var req ExecuteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeExecuteError(w, http.StatusBadRequest, fmt.Sprintf("Dữ liệu JSON không hợp lệ: %v", err))
+		return
+	}
+	if err := resolveTarget(&req); err != nil {
+		writeExecuteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.User) == "" {
@@ -274,7 +333,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	addr := ":" + port
+	// Localhost only: the API has no login and can run commands over SSH.
+	addr := "127.0.0.1:" + port
 
 	fmt.Println("==================================================")
 	fmt.Println("  SSH MANAGER - WEB & API SERVER")
