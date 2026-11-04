@@ -333,15 +333,17 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	// Localhost only: the API has no login and can run commands over SSH.
-	addr := "127.0.0.1:" + port
+	// Listen on all network interfaces (0.0.0.0) so other devices in the same LAN/WiFi can access.
+	// Can be overridden with BIND_HOST=127.0.0.1 for local-only testing.
+	bindHost := os.Getenv("BIND_HOST")
+	addr := bindHost + ":" + port
 
 	fmt.Println("==================================================")
 	fmt.Println("  SSH MANAGER - WEB & API SERVER")
 	fmt.Println("==================================================")
 	fmt.Printf(" Server dang chay tai:\n")
-	fmt.Printf("   👉 http://localhost:%s\n", port)
-	fmt.Printf("   👉 http://127.0.0.1:%s\n", port)
+	fmt.Printf("   👉 Local:   http://localhost:%s\n", port)
+	fmt.Printf("   👉 LAN/WiFi: http://<IP_MAY_TINH>:%s\n", port)
 	fmt.Println("--------------------------------------------------")
 	fmt.Println(" Nhan Ctrl+C de dung server...")
 	fmt.Println("==================================================")
